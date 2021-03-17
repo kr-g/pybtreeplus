@@ -1,0 +1,41 @@
+
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+
+# pybtreeplus - B+-Tree 
+
+`pybtreeplus` provides core methods of a 
+[`B+Tree`](https://en.wikipedia.org/wiki/B%2B_tree) 
+
+
+
+# memory / file layout
+
+see [`pybtreecore`](https://github.com/kr-g/pybtreecore/) for layout.
+
+
+## limitation
+
+- see other limits also here [`pybtreecore`](https://github.com/kr-g/pybtreecore/)
+- 
+
+# Platform
+
+Tested on Python3, and Linux.
+
+
+# development status
+
+alpha state.
+the API or logical call flow might change without prior notice.
+
+read [`CHANGELOG`](https://github.com/kr-g/pybtreeplus/blob/main/CHANGELOG.MD)
+for latest, or upcoming news.
+
+
+# installation
+    
+available on pypi. install with:
+
+    python3 -m pip install pybtreeplus
+    
