@@ -421,3 +421,60 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
                 427, 172, 90, 547, 882, 433, 905, 703, 603, 544, 884, 533, 1010, 956, 329, 268,
                 927, 662, 204, 850]"""
         return json.loads(s)
+
+    def test_0200_del_no_split(self):
+        hpf, btcore, bpt, node0, root = self.para
+
+        samples = []
+        for i in range(0, btcore.keys_per_node - 1):
+            samples.extend(self._test_data_insert_and_chk(i))
+        self.assertTrue(samples != None)
+        self.assertTrue(len(samples) > 0)
+
+        for it in [0, 7, 14]:
+            ntxt, i = self._test_data(it, mult=10)
+            samples.remove((ntxt, i))
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertTrue(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            bpt.delete_from_leaf(ntxt, i_btelem)
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertFalse(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            self._test_tree_inner(ref=ntxt)
+
+        self.assertTrue(len(i_btelem.nodelist), 12)
+
+        self._test_iter(samples)
+
+    def test_0210_del_split_no_parent_remove(self):
+        hpf, btcore, bpt, node0, root = self.para
+
+        samples = []
+        for i in range(0, btcore.keys_per_node * 2):
+            samples.extend(self._test_data_insert_and_chk(i))
+        self.assertTrue(samples != None)
+        self.assertTrue(len(samples) > 0)
+        # self._test_iter(samples)
+
+        for it in [0, 7, 14, 16, 23, 31]:
+            ntxt, i = self._test_data(it, mult=10)
+            samples.remove((ntxt, i))
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertTrue(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            bpt.delete_from_leaf(ntxt, i_btelem)
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertFalse(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            self._test_tree_inner(ref=ntxt)
+
+        self._test_iter(samples)

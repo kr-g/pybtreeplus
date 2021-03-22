@@ -28,6 +28,10 @@ class Context(object):
         # self.add(btelem)
         return btelem
 
+    def free_list(self, btelem):
+        # todo memory management strategy?
+        self.bpt.btcore.heap_fd.heap_fd(btelem.node, merge_free=False)
+
     def _read_elem(self, pos):
         if pos in self.elems:
             return self.elems[pos]
@@ -344,3 +348,71 @@ class BPlusTree(object):
             cn = ctx._read_elem(rpos)
             cn.nodelist.parent = nl.elem.pos
             ctx._write_elem(cn)
+
+    def delete_from_leaf(self, key, btelem, ctx=None, ctx_close=True):
+
+        if ctx == None:
+            ctx = Context(self)
+
+        btelem.nodelist.remove_key(key)
+        if len(btelem.nodelist) == 0:
+
+            raise NotImplementedError()
+
+            if btelem.elem.prev > 0:
+                prev_node, prev_elem = ctx._read_dll_elem(btelem.node.prev)
+                prev_elem.succ = btelem.elem.succ
+                ctx._write_dll_elem(prev_node, prev_elem)
+
+            if btelem.elem.succ > 0:
+                succ_node, succ_elem = ctx._read_dll_elem(btelem.node.succ)
+                succ_elem.prev = btelem.elem.prev
+                ctx._write_dll_elem(succ_node, succ_elem)
+
+            ctx.free_list(btelem.node)
+
+            self.delete_from_inner_ctx(key, btelem.nodelist.parent, ctx)
+
+            btelem = None
+
+        else:
+            ctx._write_elem(btelem)
+
+        if ctx_close == True:
+            ctx.done()
+
+        return btelem
+
+    def delete_from_inner_ctx(self, key, npos, ctx):
+
+        if npos == 0:
+            return None
+
+        btelem = ctx._read_elem(npos)
+
+        d_elem = None
+        for n in btelem.nodelist:
+            if key <= n.key:
+                d_elem = n
+                break
+        if d_elem == None:
+            d_elem = btelem.nodelist[-1].right
+
+        if key > btelem.nodelist[-1].key:
+            raise NotImplementedError()
+
+        else:
+            btelem.nodelist.remove_key(key)
+
+        if len(btelem.nodelist) == 0:
+            raise NotImplementedError()
+
+            self.delete_from_inner_ctx(
+                btelem.nodelist[-1].key,
+            )
+            ctx.free_list(btelem.node)
+            btelem = None
+        else:
+            ctx._write_elem(btelem)
+
+        return btelem
