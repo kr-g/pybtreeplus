@@ -268,7 +268,7 @@ class BPlusTree(object):
 
         left.elem.insert_elem_before(right.elem)
 
-        p_left, p_right, n_ins = self.insert_2_inner_ctx(left, right, ctx, key=n.key)
+        n_ins = self.insert_2_inner_ctx(left, right, ctx, key=n.key)
 
         ctx._write_elem(left)
         ctx._write_elem(right)
@@ -320,7 +320,7 @@ class BPlusTree(object):
             self._update_childs_ctx(right, n.key, ctx)
 
             ctx._write_elem(parent)
-            return parent.elem.pos, parent.elem.pos, n
+            return n
 
         parent = ctx._read_elem(parent_pos)
 
@@ -356,13 +356,13 @@ class BPlusTree(object):
         self._update_childs_ctx(pel_left, n.key, ctx)
         self._update_childs_ctx(pel_right, n.key, ctx)
 
-        p_left, p_right, n = self.insert_2_inner_ctx(pel_left, pel_right, ctx)
+        n = self.insert_2_inner_ctx(pel_left, pel_right, ctx)
 
         ctx._write_elem(pel_left)
         ctx._write_elem(pel_right)
         ctx._write_elem(parent)
 
-        return pel_left.elem.pos, pel_right.elem.pos, n
+        return n
 
     def _update_childs_ctx(self, nl, key, ctx):
         for n in nl.nodelist:
