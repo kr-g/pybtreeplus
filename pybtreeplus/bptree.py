@@ -12,7 +12,7 @@ from pybtreeplus.logtrace import LogTrace
 class Context(object):
     def __init__(self, bpt):
         self.bpt = bpt
-        self.rw = {}
+        self._dirty = set()
         self._reset()
 
     def _reset(self):
@@ -23,16 +23,11 @@ class Context(object):
         self.elems[pos] = btelem
         return btelem
 
-    def _action(self, pos, op):
-        ops = self.rw.setdefault(pos, [])
-        ops.append(op)
-
     def create_empty_list(self):
-        # todo
+        # todo undo?
         return self.bpt.btcore.create_empty_list()
 
     def _read_elem(self, pos):
-        self._action(pos, "r")
         if pos in self.elems:
             return self.elems[pos]
         el = self.bpt._read_elem(pos)
@@ -41,34 +36,25 @@ class Context(object):
     def _write_elem(self, btelem):
         pos = btelem.elem.pos
         self.elems[pos] = btelem
-        self._action(pos, "w")
-        if False:
-            return self.bpt._write_elem(btelem)
+        self._dirty.add(pos)
 
     def _read_dll_elem(self, pos):
         btelem = self._read_elem(pos)
-
-        if False:
-            heap_node, dll_elem = self.bpt.btcore.fd.read_elem(pos)
-        else:
-            heap_node, dll_elem = btelem.node, btelem.elem
-
+        # todo read just required parts?
+        heap_node, dll_elem = btelem.node, btelem.elem
         return heap_node, dll_elem
 
     def _write_dll_elem(self, heap_node, dll_elem):
-        btelem = self.elems[dll_elem.pos]
-
+        pos = dll_elem.pos
+        btelem = self.elems[pos]
+        self._dirty.add(pos)
         btelem.node = heap_node
         btelem.elem = dll_elem
 
-        if False:
-            rc = self.bpt.btcore.fd.write_elem(heap_node, dll_elem)
-            btelem = self.elems[dll_elem.pos]
-            return rc
-
     def done(self):
         for pos, btelem in self.elems.items():
-            self.bpt._write_elem(btelem)
+            if pos in self._dirty:
+                self.bpt._write_elem(btelem)
         self._reset()
 
 
