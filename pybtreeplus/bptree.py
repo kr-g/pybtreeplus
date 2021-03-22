@@ -275,17 +275,13 @@ class BPlusTree(object):
 
         if left.elem.prev > 0:
             prev_node, prev_elem = ctx._read_dll_elem(left.elem.prev)
-            # self.btcore.fd.read_elem(left.elem.prev)
             prev_elem.succ = left.elem.pos
             ctx._write_dll_elem(prev_node, prev_elem)
-            # self.btcore.fd.write_elem(prev_node, prev_elem)
 
         if right.elem.succ > 0:
             succ_node, succ_elem = ctx._read_dll_elem(right.elem.succ)
-            # self.btcore.fd.read_elem(right.elem.succ)
             succ_elem.prev = right.elem.pos
             ctx._write_dll_elem(succ_node, succ_elem)
-            # self.btcore.fd.write_elem(succ_node, succ_elem)
 
         if left.elem.prev == 0:
             self.first_pos = left.elem.pos
@@ -344,8 +340,6 @@ class BPlusTree(object):
         if self._no_split_required(parent) == True:
             ctx._write_elem(parent)
             return parent.elem.pos, parent.elem.pos, n
-
-        # raise NotImplementedError()
 
         # keep together
         pel_left = ctx.create_empty_list()
