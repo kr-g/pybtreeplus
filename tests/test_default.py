@@ -89,14 +89,7 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self._test_tree_inner(ref=ntxt)
 
         node, ex_btelem, rc = bpt.search_node(ntxt)
-        self.assertTrue(
-            rc,
-            [
-                ntxt,
-                "**LOG**",
-                bpt.ltrc.gets("btelem", ntxt),
-            ],
-        )
+        self.assertTrue(rc, ntxt)
         self.assertEqual(node.key, ntxt)
         if chk:
             self._check_leaf(i_btelem)

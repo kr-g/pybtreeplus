@@ -6,8 +6,6 @@ from pybtreecore.btnodelist import Node, NodeList
 
 # from pybtreecore.conv import ConvertStr, ConvertInteger, ConvertFloat, ConvertComplex
 
-from pybtreeplus.logtrace import LogTrace
-
 
 class Context(object):
     def __init__(self, bpt):
@@ -71,8 +69,6 @@ class BPlusTree(object):
         self.root_pos = root_pos
         self.first_pos = first_pos
         self.last_pos = last_pos
-
-        self.ltrc = LogTrace()
 
     def create_new(self):
         root = self._create_new_root()
@@ -278,16 +274,10 @@ class BPlusTree(object):
 
         lkey_pos = left.nodelist.find_key(n.key)
         rkey_pos = right.nodelist.find_key(n.key)
-        if True:
-            if lkey_pos < 0 and rkey_pos < 0:
-                raise Exception(
-                    "inserted key not found",
-                    n,
-                    "***LEFT***",
-                    left,
-                    "***RIGHT***",
-                    right,
-                )
+        if lkey_pos < 0 and rkey_pos < 0:
+            raise Exception(
+                "inserted key not found", [n, "***LEFT***", left, "***RIGHT***", right]
+            )
 
         return n_ins, (left if lkey_pos >= 0 else right), True
 
