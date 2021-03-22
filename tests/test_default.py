@@ -76,24 +76,27 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         ntxt, ndat = self._test_data(i, mult=mult, offs=offs)
         samples.append((ntxt, ndat))
 
-        _, _, rc = bpt.search_node(ntxt)
+        # here a context is returned which can be reused in
+        # following calls to speed up performance
+        _, _, rc, ctx = bpt.search_node(ntxt)
         self.assertFalse(rc, [ntxt, rc])
 
-        i_btelem = bpt.search_insert_leaf(ntxt)
+        i_btelem, ctx = bpt.search_insert_leaf(ntxt, ctx=ctx)
         self.assertTrue(i_btelem != None, [ntxt, i_btelem])
 
         n = Node(key=ntxt, data=ndat)
-        n, cngbtelem, rc = bpt.insert_2_leaf(n, i_btelem)
+        n, cngbtelem, rc = bpt.insert_2_leaf(n, i_btelem, ctx=ctx)
         self.assertTrue(rc, [ntxt, n, cngbtelem])
 
+        # checking the _whole_ tree afer only one insert
+        # this slows down the overall test run time
         self._test_tree_inner(ref=ntxt)
 
-        node, ex_btelem, rc = bpt.search_node(ntxt)
+        node, ex_btelem, rc, ctx = bpt.search_node(ntxt)
+        del ctx
+
         self.assertTrue(rc, ntxt)
         self.assertEqual(node.key, ntxt)
-        if chk:
-            self._check_leaf(i_btelem)
-            self._check_leaf(cngbtelem)
 
         return samples
 
@@ -150,7 +153,7 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         if btelem.elem.pos == bpt.root_pos:
             self._test_tree_inner(rpos, parent_pos=btelem.elem.pos, ref=ref)
 
-    # test
+    # tests
 
     def test_0000_insert(self):
         hpf, btcore, bpt, node0, root = self.para

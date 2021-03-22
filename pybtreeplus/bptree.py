@@ -23,7 +23,10 @@ class Context(object):
 
     def create_empty_list(self):
         # todo undo?
-        return self.bpt.btcore.create_empty_list()
+        btelem = self.bpt.btcore.create_empty_list()
+        # todo not added automatically to context !!!
+        # self.add(btelem)
+        return btelem
 
     def _read_elem(self, pos):
         if pos in self.elems:
@@ -54,6 +57,12 @@ class Context(object):
             if pos in self._dirty:
                 self.bpt._write_elem(btelem)
         self._reset()
+
+    def close(self):
+        self.done()
+
+    def __del__(self):
+        self.close()
 
 
 class BPlusTree(object):
@@ -158,49 +167,55 @@ class BPlusTree(object):
             for n in reversed(btelem.nodelist):
                 yield n
 
-    def search_node(self, key, npos=None):
+    def search_node(self, key, npos=None, ctx=None):
         if npos == None:
             if self.root_pos == 0:
                 raise Exception("not initialized")
             npos = self.root_pos
 
-        btelem = self._read_elem(npos)
+        if ctx == None:
+            ctx = Context(self)
+
+        btelem = ctx._read_elem(npos)
 
         if len(btelem.nodelist) == 0:
             if btelem.elem.pos != self.root_pos:
                 raise Exception("wrong root")
             # root node handling for less existing elements
-            return None, btelem, False
+            return None, btelem, False, ctx
 
         for n in btelem.nodelist:
             if n.leaf == True:
                 if n.key == key:
-                    return n, btelem, True
+                    return n, btelem, True, ctx
                 continue
             if key <= n.key:
                 return self.search_node(key, n.left)
 
         rpos = btelem.nodelist[-1].right
         if rpos == 0:
-            return None, btelem, False
+            return None, btelem, False, ctx
 
         return self.search_node(key, rpos)
 
-    def search_insert_leaf(self, key, npos=None):
+    def search_insert_leaf(self, key, npos=None, ctx=None):
         if npos == None:
             if self.root_pos == 0:
                 raise Exception("not initialized")
             npos = self.root_pos
 
-        btelem = self._read_elem(npos)
+        if ctx == None:
+            ctx = Context(self)
+
+        btelem = ctx._read_elem(npos)
 
         if len(btelem.nodelist) == 0:
             # empty root
-            return btelem
+            return btelem, ctx
 
         for n in btelem.nodelist:
             if n.leaf == True:
-                return btelem
+                return btelem, ctx
             if key <= n.key:
                 return self.search_insert_leaf(key, n.left)
 
@@ -213,10 +228,15 @@ class BPlusTree(object):
     def _get_split_pos(self):
         return self.btcore.keys_per_node // 2
 
-    def insert_2_leaf(self, n, btelem):
-        ctx = Context(self)
+    def insert_2_leaf(self, n, btelem, ctx=None, ctx_close=True):
+        if ctx == None:
+            ctx = Context(self)
+
         rc = self.insert_2_leaf_ctx(n, btelem, ctx)
-        ctx.done()
+
+        if ctx_close == True:
+            ctx.done()
+
         return rc
 
     def insert_2_leaf_ctx(self, n, btelem, ctx):
