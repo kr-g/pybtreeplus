@@ -211,6 +211,7 @@ class BPlusTree(object):
             npos = self.root_pos
 
         btelem = self._read_elem(npos)
+
         if len(btelem.nodelist) == 0:
             # empty root
             return btelem
@@ -265,13 +266,7 @@ class BPlusTree(object):
 
         left.elem.insert_elem_before(right.elem)
 
-        if False:
-            print("before", n, "***LEFT***", left, "***RIGHT***", right)
-
-        p_left, p_right, n = self.insert_2_inner_ctx(left, right, ctx)
-
-        left.nodelist.parent = p_left
-        right.nodelist.parent = p_right
+        p_left, p_right, n_ins = self.insert_2_inner_ctx(left, right, ctx, key=n.key)
 
         ctx._write_elem(left)
         ctx._write_elem(right)
@@ -297,7 +292,7 @@ class BPlusTree(object):
 
         lkey_pos = left.nodelist.find_key(n.key)
         rkey_pos = right.nodelist.find_key(n.key)
-        if False:
+        if True:
             if lkey_pos < 0 and rkey_pos < 0:
                 raise Exception(
                     "inserted key not found",
@@ -308,9 +303,9 @@ class BPlusTree(object):
                     right,
                 )
 
-        return n, (left if lkey_pos >= 0 else right), True
+        return n_ins, (left if lkey_pos >= 0 else right), True
 
-    def insert_2_inner_ctx(self, left, right, ctx):
+    def insert_2_inner_ctx(self, left, right, ctx, key=None):
         parent_pos = left.nodelist.parent
         if parent_pos != right.nodelist.parent:
             raise Exception("parent different")
@@ -323,8 +318,6 @@ class BPlusTree(object):
             n = Node(
                 key=left.nodelist[-1].key, left=left.elem.pos, right=right.elem.pos
             )
-
-            ## todo lower right node handling !!!
 
             parent.nodelist.insert(n)
 
@@ -359,35 +352,37 @@ class BPlusTree(object):
         # raise NotImplementedError()
 
         # keep together
-        left = ctx.create_empty_list()
-        ctx.add(left)
+        pel_left = ctx.create_empty_list()
+        ctx.add(pel_left)
         # re-name just for better understanding
         # but keep in mind right == btelem (until done mark)
-        right = parent
-        ctx.add(parent)  # useless...
+        pel_right = parent
+        ctx.add(pel_right)  # useless...
         spos = self._get_split_pos()
-        left.nodelist = parent.nodelist.sliced(None, spos)
-        right.nodelist = parent.nodelist.sliced(spos, None)
+        pel_left.nodelist = parent.nodelist.sliced(None, spos)
+        pel_right.nodelist = parent.nodelist.sliced(spos, None)
         # done
 
-        self._update_childs_ctx(left, n.key, ctx)
-        self._update_childs_ctx(right, n.key, ctx)
+        self._update_childs_ctx(pel_left, n.key, ctx)
+        self._update_childs_ctx(pel_right, n.key, ctx)
 
-        p_left, p_right, n = self.insert_2_inner_ctx(left, right, ctx)
+        p_left, p_right, n = self.insert_2_inner_ctx(pel_left, pel_right, ctx)
 
-        left.nodelist.parent = p_left
-        right.nodelist.parent = p_right
+        ctx._write_elem(pel_left)
+        ctx._write_elem(pel_right)
+        ctx._write_elem(parent)
 
-        ctx._write_elem(left)
-        ctx._write_elem(right)
-
-        return left.elem.pos, right.elem.pos, n
+        return pel_left.elem.pos, pel_right.elem.pos, n
 
     def _update_childs_ctx(self, nl, key, ctx):
         for n in nl.nodelist:
             if n.left == 0:
-                return
-            if n.key <= key:
-                cn = ctx._read_elem(n.left)
-                cn.nodelist.parent = nl.elem.pos
-                ctx._write_elem(cn)
+                continue
+            cn = ctx._read_elem(n.left)
+            cn.nodelist.parent = nl.elem.pos
+            ctx._write_elem(cn)
+        rpos = nl.nodelist[-1].right
+        if rpos > 0:
+            cn = ctx._read_elem(rpos)
+            cn.nodelist.parent = nl.elem.pos
+            ctx._write_elem(cn)

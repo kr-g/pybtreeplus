@@ -86,6 +86,8 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         n, cngbtelem, rc = bpt.insert_2_leaf(n, i_btelem)
         self.assertTrue(rc, [ntxt, n, cngbtelem])
 
+        self._test_tree_inner(ref=ntxt)
+
         node, ex_btelem, rc = bpt.search_node(ntxt)
         self.assertTrue(
             rc,
@@ -128,7 +130,7 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
             icnt += 1
         self.assertEqual(scnt, icnt, "sample != iter count")
 
-    def _test_tree_inner(self, npos=None):
+    def _test_tree_inner(self, npos=None, parent_pos=None, ref=None):
         hpf, btcore, bpt, node0, root = self.para
 
         if npos == None:
@@ -139,6 +141,9 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         if len(btelem.nodelist) == 0:
             return
 
+        if parent_pos != None and btelem.nodelist.parent != parent_pos:
+            raise Exception("parent broken", btelem, "expected", hex(parent_pos), ref)
+
         if btelem.nodelist[0].leaf:
             self._check_leaf(btelem)
             return
@@ -146,11 +151,11 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self._check_inner(btelem)
 
         for n in btelem.nodelist:
-            self._test_tree_inner(n.left)
+            self._test_tree_inner(n.left, parent_pos=btelem.elem.pos, ref=ref)
 
         rpos = btelem.nodelist[-1].right
         if btelem.elem.pos == bpt.root_pos:
-            self._test_tree_inner(rpos)
+            self._test_tree_inner(rpos, parent_pos=btelem.elem.pos, ref=ref)
 
     # test
 
@@ -162,7 +167,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def test_0010_insert_no_split(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -173,7 +177,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def test_0020_insert_split(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -185,7 +188,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def test_0030_insert_left_split(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -198,7 +200,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def test_0040_insert_right_split(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -211,7 +212,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def test_0050_insert_middle_split(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -224,7 +224,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def test_0060_insert_left_split_2(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -239,7 +238,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def test_0070_insert_split_leaf_2_insert_last(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -254,7 +252,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def test_0080_insert_split_leaf_2_insert_middle(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -269,7 +266,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def test_0090_insert_split_sequence_large(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -281,7 +277,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def test_0100_insert_split_sequence_predef_rand(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -295,7 +290,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
         self._test_iter(samples)
-        self._test_tree_inner()
 
     def __get_elems(self):
         import json
@@ -314,7 +308,7 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
                 138, 49, 96, 44, 186, 78]"""
         return json.loads(s)
 
-    def __test_0110_insert_split_sequence_large_predef_rand(self):
+    def test_0110_insert_split_sequence_large_predef_rand(self):
         hpf, btcore, bpt, node0, root = self.para
 
         samples = []
@@ -324,6 +318,34 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
             random.shuffle(elems)
         else:
             elems = self.__get_elems_big()
+
+        for i in elems:
+            samples.extend(self._test_data_insert_and_chk(i, mult=1))
+        self.assertTrue(samples != None)
+        self.assertTrue(len(samples) > 0)
+        self._test_iter(samples)
+
+    def test_0120_insert_split_sequence_large_full_rand(self):
+        hpf, btcore, bpt, node0, root = self.para
+
+        samples = []
+        maxn = btcore.keys_per_node * 8 * 8
+        elems = list(range(0, maxn))
+        random.shuffle(elems)
+
+        for i in elems:
+            samples.extend(self._test_data_insert_and_chk(i, mult=1))
+        self.assertTrue(samples != None)
+        self.assertTrue(len(samples) > 0)
+        self._test_iter(samples)
+
+    def __test_0130_insert_split_sequence_large_full_rand_even_bigger(self):
+        hpf, btcore, bpt, node0, root = self.para
+
+        samples = []
+        maxn = btcore.keys_per_node * 8 * 8 * 8
+        elems = list(range(0, maxn))
+        random.shuffle(elems)
 
         for i in elems:
             samples.extend(self._test_data_insert_and_chk(i, mult=1))
