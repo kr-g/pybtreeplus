@@ -78,10 +78,8 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
 
         # here a context is returned which can be reused in
         # following calls to speed up performance
-        _, _, rc, ctx = bpt.search_node(ntxt)
+        _, i_btelem, rc, ctx = bpt.search_node(ntxt)
         self.assertFalse(rc, [ntxt, rc])
-
-        i_btelem, ctx = bpt.search_insert_leaf(ntxt, ctx=ctx)
         self.assertTrue(i_btelem != None, [ntxt, i_btelem])
 
         n = Node(key=ntxt, data=ndat)

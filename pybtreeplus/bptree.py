@@ -168,6 +168,7 @@ class BPlusTree(object):
                 yield n
 
     def search_node(self, key, npos=None, ctx=None):
+        """search a key, or if missing return the node element to insert into"""
         if npos == None:
             if self.root_pos == 0:
                 raise Exception("not initialized")
@@ -198,35 +199,23 @@ class BPlusTree(object):
 
         return self.search_node(key, rpos)
 
-    def search_insert_leaf(self, key, npos=None, ctx=None):
-        if npos == None:
-            if self.root_pos == 0:
-                raise Exception("not initialized")
-            npos = self.root_pos
-
-        if ctx == None:
-            ctx = Context(self)
-
-        btelem = ctx._read_elem(npos)
-
-        if len(btelem.nodelist) == 0:
-            # empty root
-            return btelem, ctx
-
-        for n in btelem.nodelist:
-            if n.leaf == True:
-                return btelem, ctx
-            if key <= n.key:
-                return self.search_insert_leaf(key, n.left)
-
-        rpos = btelem.nodelist[-1].right
-        return self.search_insert_leaf(key, rpos)
-
     def _no_split_required(self, btelem):
         return len(btelem.nodelist) < self.btcore.keys_per_node
 
     def _get_split_pos(self):
         return self.btcore.keys_per_node // 2
+
+    def _split_elem_ctx(self, btelem, ctx):
+        left = ctx.create_empty_list()
+        ctx.add(left)
+        # re-name just for better understanding
+        # but keep in mind right == btelem (until done mark)
+        right = btelem
+        ctx.add(right)  # useless...
+        spos = self._get_split_pos()
+        left.nodelist = btelem.nodelist.sliced(None, spos)
+        right.nodelist = btelem.nodelist.sliced(spos, None)
+        return left, right
 
     def insert_2_leaf(self, n, btelem, ctx=None, ctx_close=True):
         if ctx == None:
@@ -254,18 +243,7 @@ class BPlusTree(object):
             ctx._write_elem(btelem)
             return n, btelem, True
 
-        # keep together
-        left = ctx.create_empty_list()
-        ctx.add(left)
-        # re-name just for better understanding
-        # but keep in mind right == btelem (until done mark)
-        right = btelem
-        ctx.add(right)  # useless...
-        spos = self._get_split_pos()
-        left.nodelist = btelem.nodelist.sliced(None, spos)
-        right.nodelist = btelem.nodelist.sliced(spos, None)
-        # done
-
+        left, right = self._split_elem_ctx(btelem, ctx)
         left.elem.insert_elem_before(right.elem)
 
         n_ins = self.insert_2_inner_ctx(left, right, ctx, key=n.key)
@@ -339,19 +317,9 @@ class BPlusTree(object):
 
         if self._no_split_required(parent) == True:
             ctx._write_elem(parent)
-            return parent.elem.pos, parent.elem.pos, n
+            return n
 
-        # keep together
-        pel_left = ctx.create_empty_list()
-        ctx.add(pel_left)
-        # re-name just for better understanding
-        # but keep in mind right == btelem (until done mark)
-        pel_right = parent
-        ctx.add(pel_right)  # useless...
-        spos = self._get_split_pos()
-        pel_left.nodelist = parent.nodelist.sliced(None, spos)
-        pel_right.nodelist = parent.nodelist.sliced(spos, None)
-        # done
+        pel_left, pel_right = self._split_elem_ctx(parent, ctx)
 
         self._update_childs_ctx(pel_left, n.key, ctx)
         self._update_childs_ctx(pel_right, n.key, ctx)
