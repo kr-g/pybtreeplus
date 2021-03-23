@@ -30,7 +30,7 @@ class Context(object):
 
     def free_list(self, btelem):
         # todo memory management strategy?
-        self.bpt.btcore.heap_fd.heap_fd(btelem.node, merge_free=False)
+        self.bpt.btcore.heap_fd.free(btelem.node, merge_free=False)
 
     def _read_elem(self, pos):
         if pos in self.elems:
@@ -357,21 +357,19 @@ class BPlusTree(object):
         btelem.nodelist.remove_key(key)
         if len(btelem.nodelist) == 0:
 
-            raise NotImplementedError()
-
             if btelem.elem.prev > 0:
-                prev_node, prev_elem = ctx._read_dll_elem(btelem.node.prev)
+                prev_node, prev_elem = ctx._read_dll_elem(btelem.elem.prev)
                 prev_elem.succ = btelem.elem.succ
                 ctx._write_dll_elem(prev_node, prev_elem)
 
             if btelem.elem.succ > 0:
-                succ_node, succ_elem = ctx._read_dll_elem(btelem.node.succ)
+                succ_node, succ_elem = ctx._read_dll_elem(btelem.elem.succ)
                 succ_elem.prev = btelem.elem.prev
                 ctx._write_dll_elem(succ_node, succ_elem)
 
-            ctx.free_list(btelem.node)
+            ctx.free_list(btelem)
 
-            self.delete_from_inner_ctx(key, btelem.nodelist.parent, ctx)
+            self.delete_from_inner_ctx(key, btelem.nodelist.parent, btelem.elem.pos, ctx)
 
             btelem = None
 
@@ -383,22 +381,28 @@ class BPlusTree(object):
 
         return btelem
 
-    def delete_from_inner_ctx(self, key, npos, ctx):
+    def delete_from_inner_ctx(self, key, npos, xpos, ctx):
 
         if npos == 0:
             return None
 
         btelem = ctx._read_elem(npos)
 
-        d_elem = None
+        d_elem_pos = None
         for n in btelem.nodelist:
             if key <= n.key:
-                d_elem = n
+                d_elem_pos = n.left
+                key = n.key
                 break
-        if d_elem == None:
-            d_elem = btelem.nodelist[-1].right
+        if d_elem_pos == None:
+            d_elem_pos = btelem.nodelist[-1].right
+            key = None
 
-        if key > btelem.nodelist[-1].key:
+        if d_elem_pos != xpos:
+            raise
+
+        if key == None or key > btelem.nodelist[-1].key:
+            
             raise NotImplementedError()
 
         else:
@@ -409,8 +413,11 @@ class BPlusTree(object):
 
             self.delete_from_inner_ctx(
                 btelem.nodelist[-1].key,
+                btelem.nodelist.parent,
+                btelem.elem.pos
             )
-            ctx.free_list(btelem.node)
+            
+            ctx.free_list(btelem)
             btelem = None
         else:
             ctx._write_elem(btelem)

@@ -478,3 +478,31 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
             self._test_tree_inner(ref=ntxt)
 
         self._test_iter(samples)
+
+    def test_0220_del_split_middle_parent_remove(self):
+        hpf, btcore, bpt, node0, root = self.para
+
+        samples = []
+        for i in range(0, btcore.keys_per_node * 2):
+            samples.extend(self._test_data_insert_and_chk(i))
+        self.assertTrue(samples != None)
+        self.assertTrue(len(samples) > 0)
+        # self._test_iter(samples)
+
+        for it in [7,8,9,10,11,12,13,14,15]:
+            ntxt, i = self._test_data(it, mult=10)
+            samples.remove((ntxt, i))
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertTrue(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            bpt.delete_from_leaf(ntxt, i_btelem)
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertFalse(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            self._test_tree_inner(ref=ntxt)
+
+        self._test_iter(samples)
