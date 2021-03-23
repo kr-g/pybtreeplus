@@ -376,39 +376,65 @@ class BPlusTree(object):
         else:
             ctx._write_elem(btelem)
 
+        # root,first,last hanbdling
+
         if ctx_close == True:
             ctx.done()
 
         return btelem
 
-    def delete_from_inner_ctx(self, key, npos, xpos, ctx):
+    def delete_from_inner_ctx(self, key, parent_pos, xpos, ctx):
 
-        if npos == 0:
+        if parent_pos == 0:
             return None
 
-        btelem = ctx._read_elem(npos)
+        btelem = ctx._read_elem(parent_pos)
 
+        d_node = None
         d_elem_pos = None
         for n in btelem.nodelist:
             if key <= n.key:
+                d_node = n
                 d_elem_pos = n.left
                 key = n.key
                 break
+            
         if d_elem_pos == None:
+            
+            raise NotImplementedError()
+        
             d_elem_pos = btelem.nodelist[-1].right
             key = None
 
         if d_elem_pos != xpos:
-            raise
+            raise Exception("separator not found")
+
+        if d_node == btelem.nodelist[-1] and d_elem_pos == d_node.left:
+            # last node element left
+            # rotate tree elem
+            right_elem = btelem.nodelist[-1].right
+            btelem.nodelist.pop()
+            btelem.nodelist[-1].set_right ( right_elem )
+
+            ctx._write_elem(btelem)
+            return btelem
 
         if key == None or key > btelem.nodelist[-1].key:
             
             raise NotImplementedError()
 
         else:
+            # remove any other tree part
+            bte = ctx._read_elem(d_node.left)
+            ctx.free_list(bte)
             btelem.nodelist.remove_key(key)
+            ctx._write_elem(btelem)
+            return btelem
+
+        # ctx.free_list(btelem)
 
         if len(btelem.nodelist) == 0:
+            
             raise NotImplementedError()
 
             self.delete_from_inner_ctx(
