@@ -489,7 +489,7 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(len(samples) > 0)
         # self._test_iter(samples)
 
-        for it in [7,8,9,10,11,12,13,14,15]:
+        for it in [7, 8, 9, 10, 11, 12, 13, 14, 15]:
             ntxt, i = self._test_data(it, mult=10)
             samples.remove((ntxt, i))
 
@@ -517,7 +517,16 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(len(samples) > 0)
         # self._test_iter(samples)
 
-        for it in [0,1,2,3,4,5,6,7,]:
+        for it in [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+        ]:
             ntxt, i = self._test_data(it, mult=10)
             samples.remove((ntxt, i))
 
@@ -545,7 +554,35 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         self.assertTrue(len(samples) > 0)
         # self._test_iter(samples)
 
-        for it in [16,17,18,19,20,21,22,23]:
+        for it in [16, 17, 18, 19, 20, 21, 22, 23]:
+            ntxt, i = self._test_data(it, mult=10)
+            samples.remove((ntxt, i))
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertTrue(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            bpt.delete_from_leaf(ntxt, i_btelem)
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertFalse(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            self._test_tree_inner(ref=ntxt)
+
+        self._test_iter(samples)
+
+    def test_0250_del_split_last_right_remove(self):
+        hpf, btcore, bpt, node0, root = self.para
+
+        samples = []
+        for i in range(0, btcore.keys_per_node * 2):
+            samples.extend(self._test_data_insert_and_chk(i))
+        self.assertTrue(samples != None)
+        self.assertTrue(len(samples) > 0)
+        # self._test_iter(samples)
+
+        for it in [24, 25, 26, 27, 28, 29, 30, 31]:
             ntxt, i = self._test_data(it, mult=10)
             samples.remove((ntxt, i))
 

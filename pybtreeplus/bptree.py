@@ -17,6 +17,8 @@ class Context(object):
         self.elems = {}
 
     def add(self, btelem):
+        if btelem == None:
+            raise Exception("None not allowed")
         pos = btelem.elem.pos
         self.elems[pos] = btelem
         return btelem
@@ -369,14 +371,16 @@ class BPlusTree(object):
 
             ctx.free_list(btelem)
 
-            self.delete_from_inner_ctx(key, btelem.nodelist.parent, btelem.elem.pos, ctx)
+            self.delete_from_inner_ctx(
+                key, btelem.nodelist.parent, btelem.elem.pos, ctx
+            )
 
             btelem = None
 
         else:
             ctx._write_elem(btelem)
 
-        # root,first,last hanbdling
+        # root,first,last hanbdling missing here
 
         if ctx_close == True:
             ctx.done()
@@ -398,54 +402,50 @@ class BPlusTree(object):
                 d_elem_pos = n.left
                 key = n.key
                 break
-            
+
         if d_elem_pos == None:
-            
-            raise NotImplementedError()
-        
-            d_elem_pos = btelem.nodelist[-1].right
-            key = None
+            # remove last node element left
+            # rotate tree elem
+            left_elem = btelem.nodelist[-1].left
+            btelem.nodelist.pop()
+            btelem.nodelist[-1].set_right(left_elem)
+
+            # todo adjust last_pos here ?
+
+            ctx._write_elem(btelem)
+            return btelem
+
+        if d_node == btelem.nodelist[-1] and d_elem_pos == d_node.left:
+            # remove last node element right
+            # rotate tree elem
+            right_elem = btelem.nodelist[-1].right
+            btelem.nodelist.pop()
+            btelem.nodelist[-1].set_right(right_elem)
+
+            # todo adjust last_pos here ?
+
+            ctx._write_elem(btelem)
+            return btelem
 
         if d_elem_pos != xpos:
             raise Exception("separator not found")
 
-        if d_node == btelem.nodelist[-1] and d_elem_pos == d_node.left:
-            # last node element left
-            # rotate tree elem
-            right_elem = btelem.nodelist[-1].right
-            btelem.nodelist.pop()
-            btelem.nodelist[-1].set_right ( right_elem )
+        # remove any other tree part in front, or middle
+        bte = ctx._read_elem(d_node.left)
+        ctx.free_list(bte)
+        btelem.nodelist.remove_key(key)
 
+        if len(btelem.nodelist) > 0:
             ctx._write_elem(btelem)
             return btelem
 
-        if key == None or key > btelem.nodelist[-1].key:
-            
-            raise NotImplementedError()
+        raise NotImplementedError()
 
-        else:
-            # remove any other tree part
-            bte = ctx._read_elem(d_node.left)
-            ctx.free_list(bte)
-            btelem.nodelist.remove_key(key)
-            ctx._write_elem(btelem)
-            return btelem
+        self.delete_from_inner_ctx(
+            btelem.nodelist[-1].key, btelem.nodelist.parent, btelem.elem.pos
+        )
 
-        # ctx.free_list(btelem)
-
-        if len(btelem.nodelist) == 0:
-            
-            raise NotImplementedError()
-
-            self.delete_from_inner_ctx(
-                btelem.nodelist[-1].key,
-                btelem.nodelist.parent,
-                btelem.elem.pos
-            )
-            
-            ctx.free_list(btelem)
-            btelem = None
-        else:
-            ctx._write_elem(btelem)
+        ctx.free_list(btelem)
+        btelem = None
 
         return btelem
