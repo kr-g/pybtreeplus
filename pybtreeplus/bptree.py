@@ -360,6 +360,8 @@ class BPlusTree(object):
         
         # todo merge if possible ?
 
+        # lazy deletion, only if nodelist is empty
+
         if len(btelem.nodelist) == 0:
 
             is_root = btelem.elem.pos == self.root_pos
