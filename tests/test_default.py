@@ -422,6 +422,8 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
                 927, 662, 204, 850]"""
         return json.loads(s)
 
+    # deletion test cases
+
     def test_0200_del_no_split(self):
         hpf, btcore, bpt, node0, root = self.para
 
@@ -575,6 +577,33 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
 
         for it in [24, 25, 26, 27, 28, 29, 30, 31]:
             ntxt, i = self._test_data(it, mult=10)
+            samples.remove((ntxt, i))
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertTrue(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            bpt.delete_from_leaf(ntxt, i_btelem)
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertFalse(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            self._test_tree_inner(ref=ntxt)
+
+        self._test_iter(samples)
+
+    def test_0260_del_no_split_remove_all(self):
+        hpf, btcore, bpt, node0, root = self.para
+
+        samples = []
+        for i in range(0, btcore.keys_per_node - 1):
+            samples.extend(self._test_data_insert_and_chk(i))
+        self.assertTrue(samples != None)
+        self.assertTrue(len(samples) > 0)
+
+        for i in range(0, btcore.keys_per_node - 1):
+            ntxt, i = self._test_data(i, mult=10)
             samples.remove((ntxt, i))
 
             _, i_btelem, rc, ctx = bpt.search_node(ntxt)

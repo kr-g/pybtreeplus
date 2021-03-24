@@ -359,12 +359,16 @@ class BPlusTree(object):
         btelem.nodelist.remove_key(key)
         if len(btelem.nodelist) == 0:
 
+            is_root = btelem.elem.pos == self.root_pos
+
             if btelem.elem.prev > 0:
                 prev_node, prev_elem = ctx._read_dll_elem(btelem.elem.prev)
                 prev_elem.succ = btelem.elem.succ
                 ctx._write_dll_elem(prev_node, prev_elem)
             else:
                 self.first_pos = btelem.elem.succ
+                if self.first_pos == 0:
+                    self.first_pos = self.root_pos
 
             if btelem.elem.succ > 0:
                 succ_node, succ_elem = ctx._read_dll_elem(btelem.elem.succ)
@@ -372,21 +376,20 @@ class BPlusTree(object):
                 ctx._write_dll_elem(succ_node, succ_elem)
             else:
                 self.last_pos = btelem.elem.prev
+                if self.last_pos == 0:
+                    self.last_pos = self.root_pos
 
-            # todo chek if only sibgle root is left over?
+            if is_root == False:
+                ctx.free_list(btelem)
 
-            ctx.free_list(btelem)
-
-            self.delete_from_inner_ctx(
-                key, btelem.nodelist.parent, btelem.elem.pos, ctx
-            )
-
-            btelem = None
-
+                self.delete_from_inner_ctx(
+                    key, btelem.nodelist.parent, btelem.elem.pos, ctx
+                )
+            else:
+                # emtpty root
+                ctx._write_elem(btelem)
         else:
             ctx._write_elem(btelem)
-
-        # root,first,last hanbdling missing here
 
         if ctx_close == True:
             ctx.done()
