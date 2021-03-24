@@ -487,7 +487,6 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
             samples.extend(self._test_data_insert_and_chk(i))
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
-        # self._test_iter(samples)
 
         for it in [7, 8, 9, 10, 11, 12, 13, 14, 15]:
             ntxt, i = self._test_data(it, mult=10)
@@ -515,18 +514,8 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
             samples.extend(self._test_data_insert_and_chk(i))
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
-        # self._test_iter(samples)
 
-        for it in [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-        ]:
+        for it in [0, 1, 2, 3, 4, 5, 6, 7]:
             ntxt, i = self._test_data(it, mult=10)
             samples.remove((ntxt, i))
 
@@ -552,7 +541,8 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
             samples.extend(self._test_data_insert_and_chk(i))
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
-        # self._test_iter(samples)
+
+        print("b+tree before", bpt)
 
         for it in [16, 17, 18, 19, 20, 21, 22, 23]:
             ntxt, i = self._test_data(it, mult=10)
@@ -580,7 +570,8 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
             samples.extend(self._test_data_insert_and_chk(i))
         self.assertTrue(samples != None)
         self.assertTrue(len(samples) > 0)
-        # self._test_iter(samples)
+
+        print("b+tree before", bpt)
 
         for it in [24, 25, 26, 27, 28, 29, 30, 31]:
             ntxt, i = self._test_data(it, mult=10)
