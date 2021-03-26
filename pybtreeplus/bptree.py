@@ -357,7 +357,7 @@ class BPlusTree(object):
             ctx = Context(self)
 
         btelem.nodelist.remove_key(key)
-        
+
         # todo merge if possible ?
 
         # lazy deletion, only if nodelist is empty
@@ -375,7 +375,7 @@ class BPlusTree(object):
                 if self.first_pos == 0:
                     self.first_pos = self.root_pos
 
-           if btelem.elem.succ > 0:
+            if btelem.elem.succ > 0:
                 succ_node, succ_elem = ctx._read_dll_elem(btelem.elem.succ)
                 succ_elem.prev = btelem.elem.prev
                 ctx._write_dll_elem(succ_node, succ_elem)
@@ -444,7 +444,7 @@ class BPlusTree(object):
         btelem.nodelist.remove_key(key)
 
         # todo merge if possible ?
-        
+
         if len(btelem.nodelist) > 0:
             ctx._write_elem(btelem)
             return btelem
