@@ -10,11 +10,12 @@ from pybtreecore.btnodelist import Node, NodeList
 class Context(object):
     def __init__(self, bpt):
         self.bpt = bpt
-        self._dirty = set()
         self._reset()
 
     def _reset(self):
         self.elems = {}
+        self._dirty = set()
+        self._free = []
 
     def add(self, btelem):
         if btelem == None:
@@ -25,14 +26,20 @@ class Context(object):
 
     def create_empty_list(self):
         # todo undo?
-        btelem = self.bpt.btcore.create_empty_list()
+        if len(self._free) > 0:
+            btelem = self._free.pop()
+            print("re-use formerly freed element node")
+        else:
+            btelem = self.bpt.btcore.create_empty_list()
         # todo not added automatically to context !!!
+        # todo not marked as dirty here yet ?
         # self.add(btelem)
         return btelem
 
     def free_list(self, btelem):
-        # todo memory management strategy?
-        self.bpt.btcore.heap_fd.free(btelem.node, merge_free=False)
+        if btelem.elem.pos in self._dirty:
+            self._dirty.remove(btelem.elem.pos)
+        self._free.append(btelem)
 
     def _read_elem(self, pos):
         if pos in self.elems:
@@ -62,6 +69,8 @@ class Context(object):
         for pos, btelem in self.elems.items():
             if pos in self._dirty:
                 self.bpt._write_elem(btelem)
+        for btelem in self._free:
+            self.bpt.btcore.heap_fd.free(btelem.node, merge_free=False)
         self._reset()
 
     def close(self):
@@ -459,3 +468,28 @@ class BPlusTree(object):
         btelem = None
 
         return btelem
+
+    def _get_siblings_ctx(self, btnode, ctx):
+        parent_pos = btnode.nodelist.parent
+        if parent_pos == 0:
+            # already in root
+            return None
+        parent = ctx._read_elem(parent_pos)
+        # in inner node (non root node) only left is set, right is _always_ not set
+        separ = list(map(lambda x: x.left, parent.nodelist))
+        try:
+            pos = separ.index(parent.elem.pos)
+        except:
+            raise Exception(
+                "link broken", hex(parent.elem.pos), "in", hex(parent.elem.pos)
+            )
+        lpos = pos - 1
+        left = separ[lpos] if lpos >= 0 else 0
+        rpos = pos + 1
+        right = separ[rpos] if rpos < len(separ) else 0
+        return left, right
+
+    def _read_siblings_ctx(self, left_pos, right_pos, ctx):
+        left = ctx._read_elem(left_pos) if left_pos > 0 else None
+        right = ctx._read_elem(right_pos) if right_pos > 0 else None
+        return left, right
