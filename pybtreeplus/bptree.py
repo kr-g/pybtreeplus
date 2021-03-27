@@ -37,8 +37,9 @@ class Context(object):
         return btelem
 
     def free_list(self, btelem):
-        if btelem.elem.pos in self._dirty:
-            self._dirty.remove(btelem.elem.pos)
+        pos = btelem.elem.pos
+        if pos in self._dirty:
+            self._dirty.remove(pos)
         self._free.append(btelem)
 
     def _read_elem(self, pos):
