@@ -41,6 +41,7 @@ class BTreePlusDefaultTestCase(unittest.TestCase):
         return hpf, btcore, bpt, node0, root
 
     def _iter_all(self, print_=True, func=None):
+        raise Exception("not used")
         hpf, btcore, bpt, node0, root = self.para
         for n in bpt.iter_first():
             if print_:

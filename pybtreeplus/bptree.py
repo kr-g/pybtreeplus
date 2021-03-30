@@ -494,3 +494,38 @@ class BPlusTree(object):
         left = ctx._read_elem(left_pos) if left_pos > 0 else None
         right = ctx._read_elem(right_pos) if right_pos > 0 else None
         return left, right
+
+    def _rotate_inner_from_right_ctx(self, left, right, ctx):
+        n = right.nodelist.pop(0)
+        left.nodelist.insert(n)
+        if left.nodelist[-1] != n:
+            raise Exception("wrong order")
+
+        parent = ctx._read_elem(left.nodelist.parent)
+
+        pn = list(filter(lambda x: x.left == left.elem.pos), parent.nodelist)[0]
+        pn.key = n.key
+
+        ctx._write_elem(left)
+        ctx._write_elem(right)
+        ctx._write_elem(parent)
+
+    def _merge_leaf_siblings_ctx(self, left, right, ctx):
+        prev = None
+        if left.elem.prev > 0:
+            prev = ctx._read_dll_elem(left.elem.prev)
+            prev.succ = right.elem.pos
+        right.prev = left.elem.prev
+
+        for n in left.nodelist:
+            right.insert(n)
+
+        parent = ctx._read_elem(left.nodelist.parent)
+        pn = list(filter(lambda x: x.left == left.elem.pos), parent.nodelist)[0]
+        parent.nodelist.remove(pn)
+
+        if prev != None:
+            ctx._write_dll_elem(prev)
+        ctx._write_elem(right)
+        ctx._write_elem(parent)
+        ctx.free_list(left)
