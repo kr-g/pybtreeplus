@@ -520,6 +520,9 @@ class BPlusTree(object):
         for n in left.nodelist:
             right.insert(n)
 
+        if self._no_split_required(right) == False:
+            raise Exception("nodelist len exceeded")
+
         parent = ctx._read_elem(left.nodelist.parent)
         pn = list(filter(lambda x: x.left == left.elem.pos), parent.nodelist)[0]
         parent.nodelist.remove(pn)
