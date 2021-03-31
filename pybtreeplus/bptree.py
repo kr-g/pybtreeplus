@@ -521,7 +521,7 @@ class BPlusTree(object):
             right.insert(n)
 
         if self._no_split_required(right) == False:
-            raise Exception("nodelist len exceeded")
+            raise Exception("nodelist overflow")
 
         parent = ctx._read_elem(left.nodelist.parent)
         pn = list(filter(lambda x: x.left == left.elem.pos), parent.nodelist)[0]
@@ -532,3 +532,12 @@ class BPlusTree(object):
         ctx._write_elem(right)
         ctx._write_elem(parent)
         ctx.free_list(left)
+
+    def _under_limit(self, btelem):
+        return len(btelem.nodelist) < self.btcore.keys_per_node / 3
+
+    def _can_merge(self, left, right):
+        return self._under_limit(left) and self._under_limit(right)
+
+    def _can_borrow(self, btelem):
+        return self._under_limit(btelem) == False
