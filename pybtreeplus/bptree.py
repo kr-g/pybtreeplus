@@ -367,19 +367,13 @@ class BPlusTree(object):
 
     # common
 
-    def _update_childs_ctx(self, nl, key, ctx):
-        for n in nl.nodelist:
-            if n.left == 0:
-                continue
-            cn = ctx._read_elem(n.left)
-            cn.nodelist.parent = nl.elem.pos
-            ctx._write_elem(cn)
-        if len(nl.nodelist) > 0:
-            rpos = nl.nodelist[-1].right
-            if rpos > 0:
-                cn = ctx._read_elem(rpos)
-                cn.nodelist.parent = nl.elem.pos
-                ctx._write_elem(cn)
+    def _update_childs_ctx(self, btelem, key, ctx):
+        for n in btelem.nodelist:
+            for pos in [n.left, n.right]:
+                if pos > 0:
+                    cn = ctx._read_elem(pos)
+                    cn.nodelist.parent = btelem.elem.pos
+                    ctx._write_elem(cn)
 
     # delete methods
 
