@@ -4,7 +4,7 @@
 
 # pybtreeplus - B+-Tree 
 
-`pybtreeplus` provides core methods for searching, inserting, and deleting data with a 
+`pybtreeplus` provides core methods for searching, inserting, and deleting data for a 
 [`B+Tree`](https://en.wikipedia.org/wiki/B%2B_tree) 
 
 for expert reading: 
