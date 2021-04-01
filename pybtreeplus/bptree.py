@@ -447,7 +447,6 @@ class BPlusTree(object):
 
             else:
                 if len(btelem.nodelist) == 0:
-                    print(n)
                     # colapse
                     if n.left > 0:
                         left = ctx._read_elem(n.left)
