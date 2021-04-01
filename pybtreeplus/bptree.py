@@ -208,8 +208,8 @@ class BPlusTree(object):
         btelem = ctx._read_elem(npos)
 
         if len(btelem.nodelist) == 0:
-            # if btelem.elem.pos != self.root_pos:
-            #     raise Exception("wrong root")
+            if btelem.elem.pos != self.root_pos:
+                raise Exception("wrong root")
             # root node handling for less existing elements
             return None, btelem, False, ctx
 
@@ -484,11 +484,21 @@ class BPlusTree(object):
 
         return ctx
 
+    def _calc_balance(self, left, right):
+        """calc how much nodes needs to be shifted to keep balance"""
+        lf = len(left.nodelist)
+        lr = len(right.nodelist)
+        bal_cnt = max(lf, lr) - (lf + lr) // 2
+        return bal_cnt
+
     def _rotate_inner_from_right_ctx(self, left, right, ctx):
-        n = right.nodelist.pop(0)
-        left.nodelist.insert(n)
-        if left.nodelist[-1] != n:
-            raise Exception("wrong order")
+        """rotate nodes from right to left"""
+        to_move = self._calc_balance(left, right)
+        for i in range(0, to_move):
+            n = right.nodelist.pop(0)
+            left.nodelist.insert(n)
+            if left.nodelist[-1] != n:
+                raise Exception("wrong order")
 
         parent = ctx._read_elem(left.nodelist.parent)
 
@@ -504,10 +514,13 @@ class BPlusTree(object):
         ctx._write_elem(parent)
 
     def _rotate_inner_from_left_ctx(self, left, right, ctx):
-        n = left.nodelist.pop(-1)
-        right.nodelist.insert(n)
-        if right.nodelist[0] != n:
-            raise Exception("wrong order")
+        """rotate nodes from left to right"""
+        to_move = self._calc_balance(left, right)
+        for i in range(0, to_move):
+            n = left.nodelist.pop(-1)
+            right.nodelist.insert(n)
+            if right.nodelist[0] != n:
+                raise Exception("wrong order")
 
         parent = ctx._read_elem(right.nodelist.parent)
 
