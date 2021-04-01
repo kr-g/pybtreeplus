@@ -78,10 +78,6 @@ class Context(object):
     def close(self):
         self.done()
 
-    def __del__(self):
-        pass
-        # self.close()
-
 
 class BPlusTree(object):
     def __init__(
