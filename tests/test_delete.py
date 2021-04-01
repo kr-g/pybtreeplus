@@ -69,7 +69,7 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
     def _test_data(self, i, mult=10, offs=0):
         return "hello" + str(i * mult + offs).zfill(5), i
 
-    def _test_data_insert_and_chk(self, i, mult=10, offs=0, chk=True, pr=False):
+    def _test_data_insert_and_chk(self, i, mult=10, offs=0, chk=False, pr=False):
         hpf, btcore, bpt, node0, root = self.para
 
         samples = []
@@ -89,13 +89,15 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
 
         # checking the _whole_ tree afer only one insert
         # this slows down the overall test run time
-        self._test_tree_inner(ref=ntxt)
+        if chk == True:
+            self._test_tree_inner(ref=ntxt)
 
-        node, ex_btelem, rc, ctx = bpt.search_node(ntxt)
+            node, ex_btelem, rc, ctx = bpt.search_node(ntxt)
+
+            self.assertTrue(rc, ntxt)
+            self.assertEqual(node.key, ntxt)
+
         del ctx
-
-        self.assertTrue(rc, ntxt)
-        self.assertEqual(node.key, ntxt)
 
         return samples
 
@@ -153,6 +155,11 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
             self._test_tree_inner(rpos, parent_pos=btelem.elem.pos, ref=ref)
 
     # deletion test cases
+
+    #
+    # all insert with _test_data_insert_and_chk is done with chk=False as default !!!
+    # -> no check on insert here since tested already in other test case
+    #
 
     def test_0200_del_no_split(self):
         hpf, btcore, bpt, node0, root = self.para
@@ -582,3 +589,61 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
                 427, 172, 90, 547, 882, 433, 905, 703, 603, 544, 884, 533, 1010, 956, 329, 268,
                 927, 662, 204, 850]"""
         return json.loads(s)
+
+    def test_0320_del_split_sequence_large_full_rand(self):
+        hpf, btcore, bpt, node0, root = self.para
+
+        samples = []
+        maxn = btcore.keys_per_node * 8 * 8
+        elems = list(range(0, maxn))
+        random.shuffle(elems)
+
+        for i in elems:
+            samples.extend(self._test_data_insert_and_chk(i, mult=1))
+
+        for i in elems:
+            ntxt, i = self._test_data(i, mult=1)
+            samples.remove((ntxt, i))
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertTrue(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            bpt.delete_from_leaf(ntxt, i_btelem)
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertFalse(rc, [ntxt, rc, samples])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+        self._test_tree_inner(ref="")
+
+        self._test_iter(samples)
+
+    def test_0320_del_split_sequence_large_full_rand_even_bigger(self):
+        hpf, btcore, bpt, node0, root = self.para
+
+        samples = []
+        maxn = btcore.keys_per_node * 8 * 8 * 8
+        elems = list(range(0, maxn))
+        random.shuffle(elems)
+
+        for i in elems:
+            samples.extend(self._test_data_insert_and_chk(i, mult=1))
+
+        for i in elems:
+            ntxt, i = self._test_data(i, mult=1)
+            samples.remove((ntxt, i))
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertTrue(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            bpt.delete_from_leaf(ntxt, i_btelem)
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertFalse(rc, [ntxt, rc, samples])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+        self._test_tree_inner(ref="")
+
+        self._test_iter(samples)

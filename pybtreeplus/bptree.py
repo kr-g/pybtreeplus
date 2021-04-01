@@ -393,13 +393,12 @@ class BPlusTree(object):
         parent = ctx._read_elem(parent_pos)
         # in inner node (non root node) only left is set, right is _always_ not set
         separ = list(map(lambda x: x.left, parent.nodelist))
-        separ.append(parent.nodelist[-1].right)
+        if len(parent.nodelist) > 0:
+            separ.append(parent.nodelist[-1].right)
         try:
             pos = separ.index(btelem.elem.pos)
         except:
-            raise Exception(
-                "link broken", hex(parent.elem.pos), "in", hex(parent.elem.pos)
-            )
+            raise Exception("link broken", btelem, "***PARENT***", parent)
         lpos = pos - 1
         left = separ[lpos] if lpos >= 0 else 0
         rpos = pos + 1
@@ -434,14 +433,14 @@ class BPlusTree(object):
                 left_borrow = self._can_borrow(left) if left != None else False
                 right_borrow = self._can_borrow(right) if right != None else False
 
-                if right_borrow == True:
-                    self._rotate_inner_from_right_ctx(btelem, right, ctx)
-                elif left_borrow == True:
-                    self._rotate_inner_from_left_ctx(left, btelem, ctx)
-                elif right_merge == True:
+                if right_merge == True:
                     self._merge_siblings_ctx(btelem, right, ctx)
                 elif left_merge == True:
                     self._merge_siblings_ctx(left, btelem, ctx)
+                elif right_borrow == True:
+                    self._rotate_inner_from_right_ctx(btelem, right, ctx)
+                elif left_borrow == True:
+                    self._rotate_inner_from_left_ctx(left, btelem, ctx)
                 else:
                     raise Exception("neither merge, nor borrow")
 
