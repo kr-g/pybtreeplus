@@ -4,9 +4,18 @@
 
 # pybtreeplus - B+-Tree 
 
-`pybtreeplus` provides core methods of a 
+`pybtreeplus` provides core methods for searching, inserting, and deleting data with a 
 [`B+Tree`](https://en.wikipedia.org/wiki/B%2B_tree) 
 
+for expert reading: 
+[B-tree_and_UB-tree](http://www.scholarpedia.org/article/B-tree_and_UB-tree)
+
+
+# What's new ?
+
+Check
+[`CHANGELOG`](https://github.com/kr-g/pybtreeplus/blob/main/CHANGELOG.MD)
+for latest ongoing, or upcoming news
 
 
 # memory / file layout
@@ -31,6 +40,9 @@ the API or logical call flow might change without prior notice.
 
 read [`CHANGELOG`](https://github.com/kr-g/pybtreeplus/blob/main/CHANGELOG.MD)
 for latest, or upcoming news.
+
+remark: some of the test case perform a integrity check on the _whole_ tree after every insert, or delete.
+those test are therefore very long running tasks. without integritry checks it performs much faster.
 
 
 # installation
