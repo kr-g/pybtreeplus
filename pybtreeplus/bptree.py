@@ -414,6 +414,27 @@ class BPlusTree(object):
         ctx = self._delete_from_ctx(key, btelem, ctx=ctx, ctx_close=ctx_close)
         return ctx
 
+    def _delete_rebalance_ctx(self, btelem, ctx):
+        left_pos, right_pos = self._get_siblings_ctx(btelem, ctx)
+        left, right = self._read_siblings_ctx(left_pos, right_pos, ctx)
+
+        left_merge = self._can_merge(left, btelem) if left != None else False
+        right_merge = self._can_merge(right, btelem) if right != None else False
+
+        left_borrow = self._can_borrow(left) if left != None else False
+        right_borrow = self._can_borrow(right) if right != None else False
+
+        if right_merge == True:
+            self._merge_siblings_ctx(btelem, right, ctx)
+        elif left_merge == True:
+            self._merge_siblings_ctx(left, btelem, ctx)
+        elif right_borrow == True:
+            self._rotate_inner_from_right_ctx(btelem, right, ctx)
+        elif left_borrow == True:
+            self._rotate_inner_from_left_ctx(left, btelem, ctx)
+        else:
+            raise Exception("neither merge, nor borrow")
+
     def _delete_from_ctx(self, key, btelem, ctx=None, ctx_close=True):
 
         if ctx == None:
@@ -424,26 +445,7 @@ class BPlusTree(object):
 
         if self._under_limit(btelem):
             if btelem.nodelist.parent > 0:
-                left_pos, right_pos = self._get_siblings_ctx(btelem, ctx)
-                left, right = self._read_siblings_ctx(left_pos, right_pos, ctx)
-
-                left_merge = self._can_merge(left, btelem) if left != None else False
-                right_merge = self._can_merge(right, btelem) if right != None else False
-
-                left_borrow = self._can_borrow(left) if left != None else False
-                right_borrow = self._can_borrow(right) if right != None else False
-
-                if right_merge == True:
-                    self._merge_siblings_ctx(btelem, right, ctx)
-                elif left_merge == True:
-                    self._merge_siblings_ctx(left, btelem, ctx)
-                elif right_borrow == True:
-                    self._rotate_inner_from_right_ctx(btelem, right, ctx)
-                elif left_borrow == True:
-                    self._rotate_inner_from_left_ctx(left, btelem, ctx)
-                else:
-                    raise Exception("neither merge, nor borrow")
-
+                self._delete_rebalance_ctx(btelem, ctx)
             else:
                 if len(btelem.nodelist) == 0:
                     # colapse
