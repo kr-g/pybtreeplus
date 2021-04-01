@@ -410,6 +410,36 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
 
         self._test_iter(samples)
 
+    def test_0290_del_split_sequence_predef_rand_same(self):
+        hpf, btcore, bpt, node0, root = self.para
+
+        samples = []
+        elems = self.__get_elems()
+
+        for i in elems:
+            samples.extend(self._test_data_insert_and_chk(i, mult=1))
+
+        dels = 0
+        for i in elems:
+            ntxt, i = self._test_data(i, mult=1)
+            samples.remove((ntxt, i))
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertTrue(rc, [ntxt, rc])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            bpt.delete_from_leaf(ntxt, i_btelem)
+
+            _, i_btelem, rc, ctx = bpt.search_node(ntxt)
+            self.assertFalse(rc, [ntxt, rc, samples])
+            self.assertTrue(i_btelem != None, [ntxt, i_btelem])
+
+            # print( ntxt )
+            self._test_tree_inner(ref=ntxt)
+            dels += 1
+
+        self._test_iter(samples)
+
     def __get_elems(self):
         import json
 
