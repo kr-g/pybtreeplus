@@ -327,8 +327,8 @@ class BPlusTree(object):
             left.nodelist.parent = parent.elem.pos
             right.nodelist.parent = parent.elem.pos
 
-            self._update_childs_ctx(left, n.key, ctx)
-            self._update_childs_ctx(right, n.key, ctx)
+            self._update_childs_ctx(left, ctx)
+            self._update_childs_ctx(right, ctx)
 
             ctx._write_elem(parent)
             return n
@@ -354,8 +354,8 @@ class BPlusTree(object):
 
         pel_left, pel_right = self._split_elem_ctx(parent, ctx)
 
-        self._update_childs_ctx(pel_left, n.key, ctx)
-        self._update_childs_ctx(pel_right, n.key, ctx)
+        self._update_childs_ctx(pel_left, ctx)
+        self._update_childs_ctx(pel_right, ctx)
 
         n = self.insert_2_inner_ctx(pel_left, pel_right, ctx)
 
@@ -367,7 +367,7 @@ class BPlusTree(object):
 
     # common
 
-    def _update_childs_ctx(self, btelem, key, ctx):
+    def _update_childs_ctx(self, btelem, ctx):
         for n in btelem.nodelist:
             for pos in [n.left, n.right]:
                 if pos > 0:
@@ -463,7 +463,7 @@ class BPlusTree(object):
                     self.first_pos = self.root_pos
                     self.last_pos = self.root_pos
 
-                    self._update_childs_ctx(btelem, None, ctx)
+                    self._update_childs_ctx(btelem, ctx)
 
                     rpos = 0
                     if self._overflow(btelem) == True:
@@ -475,7 +475,7 @@ class BPlusTree(object):
             if btelem.nodelist[-1].right != 0:
                 raise Exception("right found", hex(btelem.elem.pos))
             btelem.nodelist[-1].set_right(rpos)
-            self._update_childs_ctx(btelem, None, ctx)
+            self._update_childs_ctx(btelem, ctx)
 
         ctx._write_elem(btelem)
 
@@ -495,9 +495,9 @@ class BPlusTree(object):
         pn = list(filter(lambda x: x.left == left.elem.pos, parent.nodelist))[0]
         pn.key = n.key
 
-        self._update_childs_ctx(left, None, ctx)
+        self._update_childs_ctx(left, ctx)
         # self._update_childs_ctx(right, None, ctx)
-        self._update_childs_ctx(parent, None, ctx)
+        self._update_childs_ctx(parent, ctx)
 
         ctx._write_elem(left)
         ctx._write_elem(right)
@@ -525,8 +525,8 @@ class BPlusTree(object):
             pn.key = right.nodelist[-1].key
 
         # self._update_childs_ctx(left, None, ctx)
-        self._update_childs_ctx(right, None, ctx)
-        self._update_childs_ctx(parent, None, ctx)
+        self._update_childs_ctx(right, ctx)
+        self._update_childs_ctx(parent, ctx)
 
         ctx._write_elem(left)
         ctx._write_elem(right)
@@ -554,6 +554,6 @@ class BPlusTree(object):
             ctx._write_dll_elem(prev_node, prev_elem)
         ctx.free_list(left)
         ctx._write_elem(right)
-        self._update_childs_ctx(right, None, ctx)
+        self._update_childs_ctx(right, ctx)
 
         self._delete_from_ctx(pn.key, parent, ctx=ctx, ctx_close=False)
