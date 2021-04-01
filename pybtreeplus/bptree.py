@@ -78,7 +78,8 @@ class Context(object):
         self.done()
 
     def __del__(self):
-        self.close()
+        pass
+        # self.close()
 
 
 class BPlusTree(object):
@@ -95,22 +96,6 @@ class BPlusTree(object):
         self.first_pos = first_pos
         self.last_pos = last_pos
 
-    def create_new(self):
-        root = self._create_new_root()
-        self.first_pos = self.root_pos
-        self.last_pos = self.root_pos
-        return root
-
-    def _create_new_root(self):
-        root = self.btcore.create_empty_list()
-        self.root_pos = root.elem.pos
-        return root
-
-    def _create_new_root_ctx(self, ctx):
-        root = ctx.create_empty_list()
-        self.root_pos = root.elem.pos
-        return root
-
     def __repr__(self):
         return (
             self.__class__.__name__
@@ -122,6 +107,8 @@ class BPlusTree(object):
             + hex(self.last_pos)
             + " )"
         )
+
+    # persistence methods
 
     def to_bytes(self):
         buf = []
@@ -142,6 +129,26 @@ class BPlusTree(object):
             return self, buf
         return self
 
+    # create methods
+
+    def create_new(self):
+        root = self._create_new_root()
+        self.first_pos = self.root_pos
+        self.last_pos = self.root_pos
+        return root
+
+    def _create_new_root(self):
+        root = self.btcore.create_empty_list()
+        self.root_pos = root.elem.pos
+        return root
+
+    def _create_new_root_ctx(self, ctx):
+        root = ctx.create_empty_list()
+        self.root_pos = root.elem.pos
+        return root
+
+    # basic io
+
     def _read_elem(self, pos):
         return self.btcore.read_list(
             pos, conv_key=self.conv_key, conv_data=self.conv_data
@@ -154,6 +161,8 @@ class BPlusTree(object):
 
     def _flush(self):
         self.btcore.heap_fd.flush()
+
+    # iterators
 
     def iter_elem_first(self):
         pos = self.first_pos
@@ -183,6 +192,8 @@ class BPlusTree(object):
             for n in reversed(btelem.nodelist):
                 yield n
 
+    # search
+
     def search_node(self, key, npos=None, ctx=None):
         """search a key, or if missing return the node element to insert into"""
         if npos == None:
@@ -196,8 +207,8 @@ class BPlusTree(object):
         btelem = ctx._read_elem(npos)
 
         if len(btelem.nodelist) == 0:
-            if btelem.elem.pos != self.root_pos:
-                raise Exception("wrong root")
+            # if btelem.elem.pos != self.root_pos:
+            #     raise Exception("wrong root")
             # root node handling for less existing elements
             return None, btelem, False, ctx
 
@@ -214,6 +225,11 @@ class BPlusTree(object):
             return None, btelem, False, ctx
 
         return self.search_node(key, rpos)
+
+    # insert methods
+
+    def _overflow(self, btelem):
+        return len(btelem.nodelist) > self.btcore.keys_per_node
 
     def _no_split_required(self, btelem):
         return len(btelem.nodelist) < self.btcore.keys_per_node
@@ -348,6 +364,8 @@ class BPlusTree(object):
 
         return n
 
+    # common
+
     def _update_childs_ctx(self, nl, key, ctx):
         for n in nl.nodelist:
             if n.left == 0:
@@ -355,131 +373,34 @@ class BPlusTree(object):
             cn = ctx._read_elem(n.left)
             cn.nodelist.parent = nl.elem.pos
             ctx._write_elem(cn)
-        rpos = nl.nodelist[-1].right
-        if rpos > 0:
-            cn = ctx._read_elem(rpos)
-            cn.nodelist.parent = nl.elem.pos
-            ctx._write_elem(cn)
+        if len(nl.nodelist) > 0:
+            rpos = nl.nodelist[-1].right
+            if rpos > 0:
+                cn = ctx._read_elem(rpos)
+                cn.nodelist.parent = nl.elem.pos
+                ctx._write_elem(cn)
 
-    def delete_from_leaf(self, key, btelem, ctx=None, ctx_close=True):
+    # delete methods
 
-        if ctx == None:
-            ctx = Context(self)
+    def _under_limit(self, btelem):
+        return len(btelem.nodelist) < self.btcore.keys_per_node / 3
 
-        btelem.nodelist.remove_key(key)
+    def _can_merge(self, left, right):
+        return self._under_limit(left) and self._under_limit(right)
 
-        # todo merge if possible ?
+    def _can_borrow(self, btelem):
+        return self._under_limit(btelem) == False
 
-        # lazy deletion, only if nodelist is empty
-
-        if len(btelem.nodelist) == 0:
-
-            is_root = btelem.elem.pos == self.root_pos
-
-            if btelem.elem.prev > 0:
-                prev_node, prev_elem = ctx._read_dll_elem(btelem.elem.prev)
-                prev_elem.succ = btelem.elem.succ
-                ctx._write_dll_elem(prev_node, prev_elem)
-            else:
-                self.first_pos = btelem.elem.succ
-                if self.first_pos == 0:
-                    self.first_pos = self.root_pos
-
-            if btelem.elem.succ > 0:
-                succ_node, succ_elem = ctx._read_dll_elem(btelem.elem.succ)
-                succ_elem.prev = btelem.elem.prev
-                ctx._write_dll_elem(succ_node, succ_elem)
-            else:
-                self.last_pos = btelem.elem.prev
-                if self.last_pos == 0:
-                    self.last_pos = self.root_pos
-
-            if is_root == False:
-                ctx.free_list(btelem)
-
-                self.delete_from_inner_ctx(
-                    key, btelem.nodelist.parent, btelem.elem.pos, ctx
-                )
-            else:
-                # emtpty root
-                ctx._write_elem(btelem)
-        else:
-            ctx._write_elem(btelem)
-
-        if ctx_close == True:
-            ctx.done()
-
-        return btelem
-
-    def delete_from_inner_ctx(self, key, parent_pos, xpos, ctx):
-
+    def _get_siblings_ctx(self, btelem, ctx):
+        parent_pos = btelem.nodelist.parent
         if parent_pos == 0:
-            return None
-
-        btelem = ctx._read_elem(parent_pos)
-
-        d_node = None
-        d_elem_pos = None
-        for n in btelem.nodelist:
-            if key <= n.key:
-                d_node = n
-                d_elem_pos = n.left
-                key = n.key
-                break
-
-        if d_elem_pos == None:
-            # remove last node element left
-            # rotate tree elem
-            left_elem = btelem.nodelist[-1].left
-            btelem.nodelist.pop()
-            btelem.nodelist[-1].set_right(left_elem)
-            ctx._write_elem(btelem)
-            return btelem
-
-        if d_node == btelem.nodelist[-1] and d_elem_pos == d_node.left:
-            # remove last node element right
-            # rotate tree elem
-            right_elem = btelem.nodelist[-1].right
-            btelem.nodelist.pop()
-            btelem.nodelist[-1].set_right(right_elem)
-            ctx._write_elem(btelem)
-            return btelem
-
-        if d_elem_pos != xpos:
-            raise Exception("separator not found")
-
-        # remove any other tree part in front, or middle
-        bte = ctx._read_elem(d_node.left)
-        ctx.free_list(bte)
-        btelem.nodelist.remove_key(key)
-
-        # todo merge if possible ?
-
-        if len(btelem.nodelist) > 0:
-            ctx._write_elem(btelem)
-            return btelem
-
-        raise NotImplementedError()
-
-        self.delete_from_inner_ctx(
-            btelem.nodelist[-1].key, btelem.nodelist.parent, btelem.elem.pos
-        )
-
-        ctx.free_list(btelem)
-        btelem = None
-
-        return btelem
-
-    def _get_siblings_ctx(self, btnode, ctx):
-        parent_pos = btnode.nodelist.parent
-        if parent_pos == 0:
-            # already in root
-            return None
+            raise Exception("already in root")
         parent = ctx._read_elem(parent_pos)
         # in inner node (non root node) only left is set, right is _always_ not set
         separ = list(map(lambda x: x.left, parent.nodelist))
+        separ.append(parent.nodelist[-1].right)
         try:
-            pos = separ.index(parent.elem.pos)
+            pos = separ.index(btelem.elem.pos)
         except:
             raise Exception(
                 "link broken", hex(parent.elem.pos), "in", hex(parent.elem.pos)
@@ -495,6 +416,79 @@ class BPlusTree(object):
         right = ctx._read_elem(right_pos) if right_pos > 0 else None
         return left, right
 
+    def delete_from_leaf(self, key, btelem, ctx=None, ctx_close=True):
+        ctx = self._delete_from_ctx(key, btelem, ctx=ctx, ctx_close=ctx_close)
+        return ctx
+
+    def _delete_from_ctx(self, key, btelem, ctx=None, ctx_close=True):
+
+        if ctx == None:
+            ctx = Context(self)
+
+        n = btelem.nodelist.remove_key(key)
+        ctx._write_elem(btelem)
+
+        if key == "hello01170":
+            print(btelem)
+
+        if self._under_limit(btelem):
+            if btelem.nodelist.parent > 0:
+                left_pos, right_pos = self._get_siblings_ctx(btelem, ctx)
+                left, right = self._read_siblings_ctx(left_pos, right_pos, ctx)
+
+                left_merge = self._can_merge(left, btelem) if left != None else False
+                right_merge = self._can_merge(right, btelem) if right != None else False
+
+                left_borrow = self._can_borrow(left) if left != None else False
+                right_borrow = self._can_borrow(right) if right != None else False
+
+                if right_borrow == True:
+                    self._rotate_inner_from_right_ctx(btelem, right, ctx)
+                elif left_borrow == True:
+                    self._rotate_inner_from_left_ctx(left, btelem, ctx)
+                elif right_merge == True:
+                    btelem = self._merge_siblings_ctx(btelem, right, ctx)
+                elif left_merge == True:
+                    btelem = self._merge_siblings_ctx(left, btelem, ctx)
+                else:
+                    raise Exception("neither merge, nor borrow")
+            else:
+                if len(btelem.nodelist) == 0:
+                    print(n)
+                    # colapse
+                    if n.left > 0:
+                        left = ctx._read_elem(n.left)
+                        for nl in left.nodelist:
+                            btelem.nodelist.insert(nl)
+                        ctx.free_list(left)
+                    if n.right > 0:
+                        right = ctx._read_elem(n.right)
+                        for nr in right.nodelist:
+                            btelem.nodelist.insert(nr)
+                        ctx.free_list(right)
+
+                    self.first_pos = self.root_pos
+                    self.last_pos = self.root_pos
+
+                    n = None
+                    if self._overflow(btelem) == True:
+                        raise Exception("root overflow")
+
+        if n != None and n.right > 0:
+            if len(btelem.nodelist) == 0:
+                raise Exception("last elem", [key, btelem])
+            if btelem.nodelist[-1].right != 0:
+                raise Exception("right found", hex(btelem.elem.pos))
+            btelem.nodelist[-1].set_right(n.right)
+
+        ctx._write_elem(btelem)
+        self._update_childs_ctx(btelem, None, ctx)
+
+        if ctx_close == True:
+            ctx.done()
+
+        return ctx
+
     def _rotate_inner_from_right_ctx(self, left, right, ctx):
         n = right.nodelist.pop(0)
         left.nodelist.insert(n)
@@ -503,41 +497,64 @@ class BPlusTree(object):
 
         parent = ctx._read_elem(left.nodelist.parent)
 
-        pn = list(filter(lambda x: x.left == left.elem.pos), parent.nodelist)[0]
+        pn = list(filter(lambda x: x.left == left.elem.pos, parent.nodelist))[0]
         pn.key = n.key
 
         ctx._write_elem(left)
         ctx._write_elem(right)
         ctx._write_elem(parent)
 
-    def _merge_leaf_siblings_ctx(self, left, right, ctx):
-        prev = None
+    def _rotate_inner_from_left_ctx(self, left, right, ctx):
+        n = left.nodelist.pop(-1)
+        right.nodelist.insert(n)
+        if right.nodelist[0] != n:
+            raise Exception("wrong order")
+
+        parent = ctx._read_elem(right.nodelist.parent)
+
+        pn = list(filter(lambda x: x.left == left.elem.pos, parent.nodelist))[0]
+        pn.key = left.nodelist[-1].key
+
+        pn = list(
+            filter(
+                lambda x: x.left == right.elem.pos or x.right == right.elem.pos,
+                parent.nodelist,
+            )
+        )
+        pn = pn[0]
+        if pn.right == 0:
+            pn.key = right.nodelist[-1].key
+
+        ctx._write_elem(left)
+        ctx._write_elem(right)
+        ctx._write_elem(parent)
+
+    def _merge_siblings_ctx(self, left, right, ctx):
+        """merge left to right, drop left in parent"""
+        prev_node = None
         if left.elem.prev > 0:
-            prev = ctx._read_dll_elem(left.elem.prev)
-            prev.succ = right.elem.pos
-        right.prev = left.elem.prev
+            prev_node, prev_elem = ctx._read_dll_elem(left.elem.prev)
+            prev_elem.succ = left.elem.succ
+        right.elem.prev = left.elem.prev
 
         for n in left.nodelist:
-            right.insert(n)
+            right.nodelist.insert(n)
+        left.nodelist.clear()
 
         if self._no_split_required(right) == False:
             raise Exception("nodelist overflow")
 
         parent = ctx._read_elem(left.nodelist.parent)
-        pn = list(filter(lambda x: x.left == left.elem.pos), parent.nodelist)[0]
-        parent.nodelist.remove(pn)
+        pn = list(filter(lambda x: x.left == left.elem.pos, parent.nodelist))[0]
 
-        if prev != None:
-            ctx._write_dll_elem(prev)
+        if prev_node != None:
+            ctx._write_dll_elem(prev_node, prev_elem)
+        ctx._write_elem(left)
         ctx._write_elem(right)
         ctx._write_elem(parent)
+
         ctx.free_list(left)
 
-    def _under_limit(self, btelem):
-        return len(btelem.nodelist) < self.btcore.keys_per_node / 3
+        self._delete_from_ctx(pn.key, parent, ctx=ctx, ctx_close=False)
 
-    def _can_merge(self, left, right):
-        return self._under_limit(left) and self._under_limit(right)
-
-    def _can_borrow(self, btelem):
-        return self._under_limit(btelem) == False
+        return right
