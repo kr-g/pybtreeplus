@@ -18,6 +18,16 @@ Check
 for latest ongoing, or upcoming news
 
 
+# how to use
+
+reading and deleting is done via `Context` class which is reponsable for caching, preventing clashes,
+and in-memory index manipulation prior writing all changes finally to the heap.
+class methods using a `Context` have `_ctx` as naming convention.
+if no ctx is provided a ctx created on the fly any closed properly at the end.
+
+refer also to test cases in [`tests`](https://github.com/kr-g/pybtreeplus/blob/main/tests)
+
+
 # memory / file layout
 
 see [`pybtreecore`](https://github.com/kr-g/pybtreecore/) for layout.

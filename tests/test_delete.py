@@ -101,10 +101,12 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
 
         return samples
 
-    def _test_iter(self, samples=None):
+    def _test_iter(self, samples=None, no_drop=False):
         hpf, btcore, bpt, node0, root = self.para
 
         if samples != None:
+            if no_drop == True:
+                samples = list(samples)
             samples.sort(key=lambda x: x[0])
 
         last = None
@@ -619,7 +621,7 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
 
         self._test_iter(samples)
 
-    def test_0320_del_split_sequence_large_full_rand_even_bigger(self):
+    def test_0330_del_split_sequence_large_rand_even_bigger(self):
         hpf, btcore, bpt, node0, root = self.para
 
         samples = []
@@ -627,8 +629,16 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
         elems = list(range(0, maxn))
         random.shuffle(elems)
 
+        # this caused problems some before ...
+        # elems = self.__get_elems_big_buggy_3x_ml()
+
         for i in elems:
             samples.extend(self._test_data_insert_and_chk(i, mult=1))
+
+        trace = True
+
+        bpt.trace = trace
+        trace and print("insert done", len(elems))
 
         for i in elems:
             ntxt, i = self._test_data(i, mult=1)
@@ -638,6 +648,8 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
             self.assertTrue(rc, [ntxt, rc])
             self.assertTrue(i_btelem != None, [ntxt, i_btelem])
 
+            trace and print()
+            trace and print("del", ntxt, end=" ")
             bpt.delete_from_leaf(ntxt, i_btelem)
 
             _, i_btelem, rc, ctx = bpt.search_node(ntxt)
@@ -647,3 +659,12 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
         self._test_tree_inner(ref="")
 
         self._test_iter(samples)
+
+    def __get_elems_big_buggy_3x_ml(self):
+        import json
+        import os
+
+        with open(os.path.join("tests", "buggy.json.txt")) as f:
+            s = f.read()
+
+        return json.loads(s)

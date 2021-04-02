@@ -83,6 +83,8 @@ class BPlusTree(object):
     def __init__(
         self, btcore, root_pos=0, first_pos=0, last_pos=0, conv_key=None, conv_data=None
     ):
+        self.trace = False
+
         self.btcore = btcore
         self.link_size = btcore.fd.link_size
 
@@ -374,7 +376,7 @@ class BPlusTree(object):
     # delete methods
 
     def _under_limit(self, btelem):
-        return len(btelem.nodelist) < self.btcore.keys_per_node / 3
+        return len(btelem.nodelist) <= self.btcore.keys_per_node / 3
 
     def _can_merge(self, left, right):
         return self._under_limit(left) and self._under_limit(right)
@@ -382,12 +384,24 @@ class BPlusTree(object):
     def _can_borrow(self, btelem):
         return self._under_limit(btelem) == False
 
+    def _calc_balance(self, give, recv):
+        """calc how much nodes needs to be shifted to keep balance"""
+        giv = len(give.nodelist)
+        rcv = len(recv.nodelist)
+        sam = (giv + rcv) // 2
+        bal_cnt = giv - sam
+        if bal_cnt >= giv:
+            raise Exception("too less in giving node. swap parameter?")
+        self.trace and print(
+            bal_cnt, [giv, hex(give.elem.pos)], [rcv, hex(recv.elem.pos)], end=" "
+        )
+        return bal_cnt
+
     def _get_siblings_ctx(self, btelem, ctx):
         parent_pos = btelem.nodelist.parent
         if parent_pos == 0:
             raise Exception("already in root")
         parent = ctx._read_elem(parent_pos)
-        # in inner node (non root node) only left is set, right is _always_ not set
         separ = list(map(lambda x: x.left, parent.nodelist))
         if len(parent.nodelist) > 0:
             separ.append(parent.nodelist[-1].right)
@@ -420,16 +434,26 @@ class BPlusTree(object):
         left_borrow = self._can_borrow(left) if left != None else False
         right_borrow = self._can_borrow(right) if right != None else False
 
-        if right_merge == True:
-            self._merge_siblings_ctx(btelem, right, ctx)
-        elif left_merge == True:
+        if left_merge == True:
+            self.trace and print(
+                "ml", hex(left_pos), ">", hex(btelem.elem.pos), end=" "
+            )
             self._merge_siblings_ctx(left, btelem, ctx)
-        elif right_borrow == True:
-            self._rotate_inner_from_right_ctx(btelem, right, ctx)
+        elif right_merge == True:
+            self.trace and print(
+                "mr", hex(right_pos), ">", hex(btelem.elem.pos), end=" "
+            )
+            self._merge_siblings_ctx(btelem, right, ctx)
+            btelem = right
         elif left_borrow == True:
+            self.trace and print("bl", hex(btelem.elem.pos), end=" ")
             self._rotate_inner_from_left_ctx(left, btelem, ctx)
+        elif right_borrow == True:
+            self.trace and print("br", hex(btelem.elem.pos), end=" ")
+            self._rotate_inner_from_right_ctx(btelem, right, ctx)
         else:
             raise Exception("neither merge, nor borrow")
+        return btelem
 
     def _delete_from_ctx(self, key, btelem, ctx=None, ctx_close=True):
 
@@ -439,39 +463,41 @@ class BPlusTree(object):
         n = btelem.nodelist.remove_key(key)
         rpos = n.right
 
-        if self._under_limit(btelem):
+        if len(btelem.nodelist) == 0:
             if btelem.nodelist.parent > 0:
-                self._delete_rebalance_ctx(btelem, ctx)
-            else:
-                if len(btelem.nodelist) == 0:
-                    # colapse
-                    if n.left > 0:
-                        left = ctx._read_elem(n.left)
-                        for nl in left.nodelist:
-                            btelem.nodelist.insert(nl)
-                        ctx.free_list(left)
-                    if n.right > 0:
-                        right = ctx._read_elem(n.right)
-                        for nr in right.nodelist:
-                            btelem.nodelist.insert(nr)
-                        ctx.free_list(right)
+                raise Exception("not root")
 
-                    self.first_pos = self.root_pos
-                    self.last_pos = self.root_pos
+            self.trace and print(
+                "c", hex(n.left), hex(n.right), ">", hex(btelem.elem.pos), end=" "
+            )
 
-                    self._update_childs_ctx(btelem, ctx)
+            if rpos > 0:
+                # colapse by one level
+                # set right as new root since left was dropped
+                root = ctx._read_elem(self.root_pos)
+                ctx.free_list(root)
 
-                    rpos = 0
-                    if self._overflow(btelem) == True:
-                        raise Exception("root overflow")
+                # todo make finally better ?
+                btelem = ctx._read_elem(rpos)
+
+                btelem.nodelist.parent = 0
+                self.root_pos = rpos
+
+                # todo make finally better ?
+                rpos = 0
+
+        else:
+            if self._under_limit(btelem):
+                if btelem.nodelist.parent > 0:
+                    btelem = self._delete_rebalance_ctx(btelem, ctx)
 
         if rpos > 0:
             if len(btelem.nodelist) == 0:
-                raise Exception("last elem", [key, btelem])
+                raise Exception("last elem", [key, hex(rpos), btelem])
             if btelem.nodelist[-1].right != 0:
                 raise Exception("right found", hex(btelem.elem.pos))
             btelem.nodelist[-1].set_right(rpos)
-            self._update_childs_ctx(btelem, ctx)
+            # self._update_childs_ctx(btelem, ctx)
 
         ctx._write_elem(btelem)
 
@@ -480,16 +506,9 @@ class BPlusTree(object):
 
         return ctx
 
-    def _calc_balance(self, left, right):
-        """calc how much nodes needs to be shifted to keep balance"""
-        lf = len(left.nodelist)
-        lr = len(right.nodelist)
-        bal_cnt = max(lf, lr) - (lf + lr) // 2
-        return bal_cnt
-
     def _rotate_inner_from_right_ctx(self, left, right, ctx):
         """rotate nodes from right to left"""
-        to_move = self._calc_balance(left, right)
+        to_move = self._calc_balance(right, left)
         for i in range(0, to_move):
             n = right.nodelist.pop(0)
             left.nodelist.insert(n)
@@ -561,8 +580,14 @@ class BPlusTree(object):
 
         if prev_node != None:
             ctx._write_dll_elem(prev_node, prev_elem)
+        # ctx._write_elem(left)
         ctx.free_list(left)
+
+        if self.first_pos == left.elem.pos:
+            self.first_pos = left.elem.succ
+
         ctx._write_elem(right)
         self._update_childs_ctx(right, ctx)
 
+        self.trace and print("d", pn.key, hex(parent.elem.pos), end=" ")
         self._delete_from_ctx(pn.key, parent, ctx=ctx, ctx_close=False)
