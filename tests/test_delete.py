@@ -629,7 +629,7 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
         elems = list(range(0, maxn))
         random.shuffle(elems)
 
-        # this caused problems some before ...
+        # this caused some problems before ...
         # elems = self.__get_elems_big_buggy_3x_ml()
 
         for i in elems:

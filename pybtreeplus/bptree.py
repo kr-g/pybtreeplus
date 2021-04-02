@@ -522,7 +522,7 @@ class BPlusTree(object):
 
         self._update_childs_ctx(left, ctx)
         # self._update_childs_ctx(right, None, ctx)
-        self._update_childs_ctx(parent, ctx)
+        # self._update_childs_ctx(parent, ctx)
 
         ctx._write_elem(left)
         ctx._write_elem(right)
@@ -554,7 +554,7 @@ class BPlusTree(object):
 
         # self._update_childs_ctx(left, None, ctx)
         self._update_childs_ctx(right, ctx)
-        self._update_childs_ctx(parent, ctx)
+        # self._update_childs_ctx(parent, ctx)
 
         ctx._write_elem(left)
         ctx._write_elem(right)
