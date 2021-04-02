@@ -97,7 +97,7 @@ class BTreePlusDeleteTestCase(unittest.TestCase):
             self.assertTrue(rc, ntxt)
             self.assertEqual(node.key, ntxt)
 
-        del ctx
+        ctx.done()
 
         return samples
 
