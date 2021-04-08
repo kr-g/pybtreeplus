@@ -38,6 +38,13 @@ see [`pybtreecore`](https://github.com/kr-g/pybtreecore/) for layout.
 - see other limits also here [`pybtreecore`](https://github.com/kr-g/pybtreecore/)
 - 
 
+
+# Related Projects
+
+search for topic [`pyheapfile`](https://github.com/topics/pyheapfile) 
+on github to explore related tools/ modules.
+
+
 # Platform
 
 Tested on Python3, and Linux.
