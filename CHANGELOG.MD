@@ -1,8 +1,9 @@
 
 # changelog
 
-## next release v0.0.2
+## release v0.0.2
 
+- fix missing wheel
 - 
 
 
