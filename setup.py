@@ -46,7 +46,7 @@ setuptools.setup(
     ),
     keywords="implementation of a B+-Tree storage memory management pyheapfile",
     install_requires=[
-        "pybtreecore>=0.0.4",
+        "pybtreecore",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
